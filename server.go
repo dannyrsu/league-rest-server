@@ -2,30 +2,30 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
-
-	"github.com/rs/cors"
+	"time"
 
 	leagueapi "github.com/dannyrsu/league-api"
-	"github.com/julienschmidt/httprouter"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/rs/cors"
 )
 
 type server struct {
-	router *httprouter.Router
+	router *chi.Mux
 }
 
-func (*server) defaultHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Welcome to the League of Draaaaven")
+func defaultHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Welcome to the League of Draaaaven"))
 }
 
-func (*server) getSummonerStatsHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (*server) getSummonerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	queryValues := r.URL.Query()
 
-	summonerProfile := leagueapi.GetSummonerProfile(params.ByName("summonername"), queryValues.Get("region"))
+	summonerProfile := leagueapi.GetSummonerProfile(chi.URLParam(r, "summonername"), queryValues.Get("region"))
 
 	results := map[string]interface{}{
 		"summonerProfile": summonerProfile,
@@ -34,10 +34,10 @@ func (*server) getSummonerStatsHandler(w http.ResponseWriter, r *http.Request, p
 	json.NewEncoder(w).Encode(results)
 }
 
-func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	queryValues := r.URL.Query()
-	matchID, err := strconv.ParseInt(params.ByName("matchid"), 10, 64)
+	matchID, err := strconv.ParseInt(chi.URLParam(r, "matchid"), 10, 64)
 	if err != nil {
 		log.Fatalf("Error converting match paramter: %v", err)
 		matchID = 0
@@ -51,27 +51,36 @@ func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request, par
 	json.NewEncoder(w).Encode(results)
 }
 
-func (*server) getChampionByKeyHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (*server) getChampionByKeyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	champion := leagueapi.GetChampionByKey(params.ByName("championkey"))
+	champion := leagueapi.GetChampionByKey(chi.URLParam(r, "championkey"))
 
 	json.NewEncoder(w).Encode(champion)
 }
 
+func (s *server) middleware() {
+	s.router.Use(middleware.RequestID)
+	s.router.Use(middleware.RealIP)
+	s.router.Use(middleware.Logger)
+	s.router.Use(middleware.Recoverer)
+
+	s.router.Use(middleware.Timeout(60 * time.Second))
+}
+
 func (s *server) routes() {
-	s.router.GET("/", s.defaultHandler)
-	s.router.GET("/v1/summoner/:summonername/stats", s.getSummonerStatsHandler)
-	s.router.GET("/v1/match/:matchid", s.getMatchDetailHandler)
-	s.router.GET("/v1/champion/:championkey", s.getChampionByKeyHandler)
-	s.router.ServeFiles("/static/*filepath", http.Dir("static"))
+	s.router.Get("/", defaultHandler)
+	s.router.Get("/v1/summoner/{summonername}/stats", s.getSummonerStatsHandler)
+	s.router.Get("/v1/match/{matchid}", s.getMatchDetailHandler)
+	s.router.Get("/v1/champion/{championkey}", s.getChampionByKeyHandler)
 }
 
 func main() {
 	server := &server{
-		router: httprouter.New(),
+		router: chi.NewRouter(),
 	}
 
+	server.middleware()
 	server.routes()
 
 	handler := cors.Default().Handler(server.router)
