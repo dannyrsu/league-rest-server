@@ -84,5 +84,6 @@ func main() {
 	server.routes()
 
 	handler := cors.Default().Handler(server.router)
+	log.Println("Starting League Server...")
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }
