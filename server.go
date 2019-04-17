@@ -48,7 +48,7 @@ func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request) {
 		"match": match,
 	}
 
-	json.NewEncoder(w).Encode(match)
+	json.NewEncoder(w).Encode(results)
 }
 
 func (*server) getChampionByKeyHandler(w http.ResponseWriter, r *http.Request) {
