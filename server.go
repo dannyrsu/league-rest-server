@@ -42,13 +42,13 @@ func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Error converting match paramter: %v", err)
 		matchID = 0
 	}
-	match := leagueapi.GetGameData(matchID, queryValues.Get("region"))
+	match := leagueapi.GetMatch(matchID, queryValues.Get("region"))
 
 	results := map[string]interface{}{
 		"match": match,
 	}
 
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(match)
 }
 
 func (*server) getChampionByKeyHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,11 @@ func (*server) getChampionByKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	champion := leagueapi.GetChampionByKey(chi.URLParam(r, "championkey"))
 
-	json.NewEncoder(w).Encode(champion)
+	results := map[string]interface{}{
+		"champion": champion,
+	}
+
+	json.NewEncoder(w).Encode(results)
 }
 
 func (s *server) middleware() {

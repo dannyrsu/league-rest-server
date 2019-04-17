@@ -42,7 +42,7 @@ func (*server) getMatchDetailHandler(w http.ResponseWriter, r *http.Request, par
 		log.Fatalf("Error converting match paramter: %v", err)
 		matchID = 0
 	}
-	match := leagueapi.GetGameData(matchID, queryValues.Get("region"))
+	match := leagueapi.GetMatch(matchID, queryValues.Get("region"))
 
 	results := map[string]interface{}{
 		"match": match,
